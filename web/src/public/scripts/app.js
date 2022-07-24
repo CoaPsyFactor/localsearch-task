@@ -33,6 +33,43 @@ const SearchForBusiness = async (termType, term) => {
 };
 
 /**
+ * Prepare and show modal with business details.
+ *
+ * @param {object} result Business result object.
+ */
+const ShowResultPreviewModal = (result) => {
+	$modal.querySelector('#result-preview-name').innerHTML = result.name;
+	$modal.querySelector('#result-preview-phone').innerHTML = result.phone;
+	$modal.querySelector('#result-preview-address').innerHTML = result.address;
+	$modal.querySelector('#result-preview-website').innerHTML = result.website;
+
+	const $openingHoursTable = $modal.querySelector('#result-preview-opening-hours tbody');
+	$openingHoursTable.innerHTML = '';
+
+	Object.entries(result.workingHours || {}).forEach(([weekdays, openingHours]) => {
+		const $workingHourRow = document.createElement('tr');
+		const $workingHourWeekday = document.createElement('td');
+		const $workingHourTimes = document.createElement('td');
+
+		$workingHourWeekday.innerHTML = weekdays.split('-').map((workday) => (
+			`${workday.charAt(0).toUpperCase()}${workday.slice(1)}`
+		)).join(' - ');
+
+		if (openingHours === null) {
+			$workingHourTimes.innerHTML = 'Closed';
+		} else {
+			$workingHourTimes.innerHTML = `<ul>${openingHours.map(({ start, end }) => `<li>${start} - ${end}</li>`).join('')}</ul>`;
+		}
+
+		$workingHourRow.appendChild($workingHourWeekday);
+		$workingHourRow.appendChild($workingHourTimes);
+		$openingHoursTable.appendChild($workingHourRow);
+	});
+
+	$modalToggleButton.click();
+};
+
+/**
  * Handle search trigger, and execute actual search
  */
 const PerformSearch = async () => {
@@ -52,20 +89,17 @@ const PerformSearch = async () => {
 				$element.style = 'cursor: pointer;';
 				$element.classList = 'column column-offset-10';
 				$element.appendChild($resultCard);
-				$element.onclick = () => {
-					$modal.querySelector('#result-preview-name').innerHTML = result.name;
-					$modal.querySelector('#result-preview-phone').innerHTML = result.phone;
-					$modal.querySelector('#result-preview-address').innerHTML = result.address;
-					$modal.querySelector('#result-preview-website').innerHTML = result.website;
-
-					$modalToggleButton.click();
-				};
+				$element.onclick = () => { ShowResultPreviewModal(result); };
 
 				$resultsList.appendChild($element);
 			});
+
+			return;
 		}
+
+		$resultsList.innerHTML = 'No Results';
 	}
-}
+};
 
 window.onload = () => {
 	$resultTemplate = document.getElementById('search-result-card');
