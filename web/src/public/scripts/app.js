@@ -57,7 +57,7 @@ const PerformSearch = async () => {
 					$modal.querySelector('#result-preview-phone').innerHTML = result.phone;
 					$modal.querySelector('#result-preview-address').innerHTML = result.address;
 					$modal.querySelector('#result-preview-website').innerHTML = result.website;
-					
+
 					$modalToggleButton.click();
 				};
 
@@ -76,6 +76,13 @@ window.onload = () => {
 	$resultsList = document.getElementById('results-container');
 
 	const $searchButton = document.getElementById('search-perform');
+	const $searchForm = document.getElementById('search-form');
 
 	$searchButton.onclick = PerformSearch;
+	$searchForm.onsubmit = (event) => {
+		event.preventDefault();
+		event.stopImmediatePropagation();
+
+		PerformSearch();
+	};
 };

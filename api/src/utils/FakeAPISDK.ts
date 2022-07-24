@@ -19,7 +19,7 @@ export type Business = {
 	website: string;
 	phone: string;
 	workingHours: BusinessOpeningHours;
-}
+};
 
 const availableBusinessIds = ['GXvPAor1ifNfpF0U5PTG0w', 'ohGSnJtMIC5nPfYRi_HTAg'];
 
@@ -28,6 +28,7 @@ export default class FakeAPISDK {
 
 	constructor() {
 		this.redis = createClient({ url: 'redis://cache' })
+
 		const redisErrorListener = (error: any): void => {
 			this.redis.off('error', redisErrorListener);
 
@@ -52,11 +53,13 @@ export default class FakeAPISDK {
 	 * @returns {Business[]}
 	 */
 	async getBusinesses(): Promise<Business[]> {
-		// const cachedBusinesses = await this.getCachedBusinesses();
+		const cachedBusinesses = await this.getCachedBusinesses();
 
-		// if (cachedBusinesses) {
-		// 	return cachedBusinesses;
-		// }
+		if (cachedBusinesses) {
+			return cachedBusinesses;
+		}
+
+		console.info('Cache is empty - triggering provider API');
 
 		const businesses: Business[] = await Promise.all(availableBusinessIds.map(async (businessId: string): Promise<Business> => {
 			const businessRequestResult = await axios.get(`https://storage.googleapis.com/coding-session-rest-api/${businessId}`);
@@ -77,6 +80,12 @@ export default class FakeAPISDK {
 		return businesses;
 	}
 
+	/**
+	 * Generate "UI" friendly object representing business opening hours.
+	 *
+	 * @param {object} openingHoursRaw RAW object representing business opening hours.
+	 * @returns {BusinessOpeningHours}
+	 */
 	generateOpeningHours(openingHoursRaw: any): BusinessOpeningHours {
 		const days = Object.values(BusinessOpeningHoursDays);
 
@@ -85,10 +94,8 @@ export default class FakeAPISDK {
 
 		const data: BusinessOpeningHours = {};
 
-		// days.splice(0, 1);
-
 		days.forEach((currentDay: string, index: number) => {
-			const currentOpeningHoursString = JSON.stringify(openingHoursRaw[currentDay] || 'null');
+			const currentOpeningHoursString = openingHoursRaw[currentDay] && JSON.stringify(openingHoursRaw[currentDay]) || null;
 
 			if (currentOpeningHoursString !== openingHours) {
 				const previousWeekday = days[index - 1] || null;
@@ -96,19 +103,19 @@ export default class FakeAPISDK {
 					? weekday
 					: `${weekday}-${previousWeekday}`;
 
-				data[key] = JSON.parse(openingHours || 'null');
+				data[key] = openingHours && JSON.parse(openingHours) || null;
 
 				openingHours = currentOpeningHoursString;
 				weekday = currentDay;
 			}
 			
 			if (index + 1 === days.length) {
-				// const previousWeekday = days[index - 1] || null;
-				// const key = currentOpeningHoursString !== openingHours
-				// 	? currentDay
-				// 	: `${previousWeekday}-${currentDay}`;
+				const previousWeekday = days[index - 1] || null;
+				const key = currentOpeningHoursString !== openingHours || data[previousWeekday]
+					? currentDay
+					: `${previousWeekday}-${currentDay}`;
 
-				data[currentDay] = JSON.parse(currentOpeningHoursString || 'null');
+				data[key] = currentOpeningHoursString && JSON.parse(currentOpeningHoursString) || null;
 			}
 		});
 
@@ -147,7 +154,7 @@ export default class FakeAPISDK {
 			return;
 		}
 
-		// TODO: maybe set TTL?
 		await this.redis.set('businesses', JSON.stringify(businesses));
+		await this.redis.expire('businesses', 60);
 	}
 }
